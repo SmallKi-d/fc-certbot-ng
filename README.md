@@ -8,6 +8,10 @@
 
 通过 AliDNS 完成 DNS-01 验证，将证书上传到数字证书管理服务 CAS；定时检查由本应用管理的 FC 自定义域名，在证书到期前七天内续签并更新绑定。
 
+[![在 Serverless Devs 中查看应用模板](https://img.shields.io/badge/Serverless%20Devs-查看应用模板-FF6A00?style=for-the-badge&logo=alibabacloud&logoColor=white)](https://registry.serverless-devs.com/details/fc-certbot-ng)
+
+[![GitHub Star 数量历史曲线](https://api.star-history.com/svg?repos=SmallKi-d/fc-certbot-ng&type=Date)](https://www.star-history.com/#SmallKi-d/fc-certbot-ng&Date)
+
 ## 版本支持
 
 | 组件 | 版本 |
