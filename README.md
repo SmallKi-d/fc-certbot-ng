@@ -87,6 +87,25 @@ npm test
 
 测试使用真实 SDK 模型和加密库，模拟云端请求。真实签发需要账号权限及可验证域名。模板注册表发布工作流保留为手动触发；Git 仓库部署不需要发布模板。
 
+## 发布为 Serverless Devs 应用模板
+
+源码仓库的 `s.yaml` 使用环境变量支持 Git 部署。发布脚本会生成独立目录 `.release/fc-certbot-ng/`，其中 `src/s.yaml` 改为接收模板初始化时的访问别名、函数名、RAM 角色和邮箱参数，源码仓库保持原配置。发布包包含普通源码文件，不包含 Git 元数据、本地凭证、证书、依赖目录或缓存。
+
+在本仓库根目录执行：
+
+```bash
+git submodule update --init --recursive
+node scripts/prepare-template.test.js
+node scripts/prepare-template.js
+s registry login
+cd .release/fc-certbot-ng
+s registry publish
+```
+
+重复构建前请移走或删除旧的 `.release/fc-certbot-ng` 目录；每次发布新版本前更新根目录 `publish.yaml` 的 `Version`。发布成功后可用 `s init fc-certbot-ng -d /tmp/fc-certbot-ng-demo` 验证初始化。应用中心模板入口读取 `publish.yaml` 的 `role.x-role`，可引导选择／创建角色并授权；普通 Git 部署继续使用流水线环境变量。
+
+GitHub 的手动发布工作流也会先生成此目录，再从中执行 `s registry publish`，需要配置 `alibaba_registry_v3_publish_token` secret。脚本只准备发布包，不会自动发布或创建云资源。
+
 ## 致谢
 
 本项目延续 [devsapp/fc-certbot](https://github.com/devsapp/fc-certbot) 的证书签发与 FC 域名轮换设计。问题反馈请提交到 [fc-certbot-ng Issues](https://github.com/SmallKi-d/fc-certbot-ng/issues)。

@@ -24,6 +24,9 @@ jobs:
       - name: s registry login
         run: |
           s registry login --token ${{ secrets.alibaba_registry_v3_publish_token }}
+      - name: Prepare initialized application template
+        run: node scripts/prepare-template.js
       - name: release prod
+        working-directory: .release/fc-certbot-ng
         run: |
           s registry publish

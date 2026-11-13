@@ -22,6 +22,10 @@ jobs:
       - name: Build Python dependencies
         working-directory: src/cert-generator
         run: PYTHON_BIN=python3.12 bash scripts/build-deps.sh
+      - name: Test template packaging
+        run: node scripts/prepare-template.test.js
+      - name: Prepare application template
+        run: node scripts/prepare-template.js
       - name: Test certificate generator
         working-directory: src/cert-generator
         run: PYTHONPATH=python python3.12 -m unittest discover -s tests -v
