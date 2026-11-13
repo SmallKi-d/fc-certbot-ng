@@ -16,7 +16,6 @@ Service:
   函数计算:
     Authorities:
       - AliyunFCFullAccess
-Organization: SmallKi-d
 Effective: Public
 Parameters:
   type: object
