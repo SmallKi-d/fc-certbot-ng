@@ -10,8 +10,6 @@
 
 [![在 Serverless Devs 中查看应用模板](https://img.shields.io/badge/Serverless%20Devs-查看应用模板-FF6A00?style=for-the-badge&logo=alibabacloud&logoColor=white)](https://registry.serverless-devs.com/details/fc-certbot-ng)
 
-[![GitHub Star 数量历史曲线](https://api.star-history.com/svg?repos=SmallKi-d/fc-certbot-ng&type=Date)](https://www.star-history.com/#SmallKi-d/fc-certbot-ng&Date)
-
 ## 版本支持
 
 | 组件 | 版本 |
@@ -113,3 +111,5 @@ GitHub 的手动发布工作流也会先生成此目录，再从中执行 `s reg
 ## 致谢
 
 本项目延续 [devsapp/fc-certbot](https://github.com/devsapp/fc-certbot) 的证书签发与 FC 域名轮换设计。问题反馈请提交到 [fc-certbot-ng Issues](https://github.com/SmallKi-d/fc-certbot-ng/issues)。
+
+[![GitHub Star 数量历史曲线](https://api.star-history.com/svg?repos=SmallKi-d/fc-certbot-ng&type=Date)](https://www.star-history.com/#SmallKi-d/fc-certbot-ng&Date)
