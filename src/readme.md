@@ -53,6 +53,36 @@
 
 ## 部署 & 体验
 
+### Python 3.12 兼容版本
+
+本地修改版已适配 Python 3.12、Certbot 5.10.0、CAS Python SDK 3.9.5、AliDNS Python SDK 4.6.1、cryptography 50.0.2 和 PyOpenSSL 26.4.0。完整依赖及配置见 [证书生成器说明](cert-generator/README.md)。Node.js 域名管理函数继续使用 Node.js 26，依赖通过 `package-lock.json` 固定。
+
+部署这份修改后的源码时，请使用本地 `src/s.yaml`，不要重新执行 `s init fc-certbot` 覆盖成本地未修改的上游模板：
+
+1. 在与 FC Python 3.12 运行时相同的 Linux 架构与兼容 glibc 环境准备 Python 3.12、pip、Node.js 26+、npm 和 Serverless Devs v3。
+2. 将 `src/s.yaml` 中 `{{ access }}`、`{{ role }}`、`{{ certGeneratorFunctionName }}`、`{{ fcDomainManagerFunctionName }}`、`{{ certbotEmail }}` 替换为实际配置。邮箱用于 Let's Encrypt 账号注册；RAM 角色应具有 DNS、CAS、FC 权限。
+3. 进入 `src` 执行 `s deploy -y`。四个函数分别配置了部署前构建：证书生成器使用 Python 3.12 安装依赖，域名管理器使用 `npm ci --omit=dev`。可以通过 `PYTHON_BIN` 指定 Python 3.12 解释器，不再依赖旧的解释器绝对路径。
+
+```bash
+cd src
+PYTHON_BIN=python3.12 s deploy -y
+```
+
+函数入口仍为 `index.handler`。Python 函数按每次调用的 `context.credentials` 使用 RAM 角色临时密钥，不需要在模板内填写 AccessKey。Certbot 账号、证书、工作文件与日志默认写入 `/tmp/letsencrypt/`。
+
+本地验证（在项目根目录执行，先安装依赖）：
+
+```bash
+cd src/cert-generator
+PYTHON_BIN=python3.12 bash scripts/build-deps.sh
+PYTHONPATH=python python3.12 -m unittest discover -s tests -v
+cd ../fc-domain-manager
+npm ci --omit=dev
+npm test
+```
+
+以下上游模板初始化方式会获取已发布的模板，只有发布本地修改后才会包含这些适配。
+
 <appcenter>
    
 - :fire: 通过 [Serverless 应用中心](https://fcnext.console.aliyun.com/applications/create?template=fc-certbot) ，

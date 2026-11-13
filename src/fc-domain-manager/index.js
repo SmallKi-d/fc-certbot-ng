@@ -8,7 +8,6 @@ const cas20200407 = require("@alicloud/cas20200407");
 const OpenApi = require("@alicloud/openapi-client");
 const Util = require("@alicloud/tea-util");
 const Stream = require("@alicloud/darabonba-stream");
-const _ = require("lodash");
 const runtime = new Util.RuntimeOptions({});
 const CERT_GENERATOR_FUNCTION_NAME = process.env.CERT_GENERATOR_FUNCTION_NAME;
 
@@ -55,11 +54,11 @@ async function listCustomDomains(regionId, context) {
       runtime
     );
     out.push(
-      ...result.body.customDomains.filter((customDomain) => {
+      ...(result.body.customDomains || []).filter((customDomain) => {
         const { protocol, certConfig } = customDomain;
         if (
-          protocol.toLocaleLowerCase().includes("https") &&
-          certConfig.certName.startsWith(CERT_PREFIX)
+          protocol?.toLowerCase().includes("https") &&
+          certConfig?.certName?.startsWith(CERT_PREFIX)
         ) {
           customDomain.regionId = regionId;
           return true;
@@ -101,18 +100,19 @@ async function updateCustomDomain(customDomain, certName, certInfo, context) {
 async function updateCustomDomains(certName, customDomains, context) {
   const fcClient = getFcClient(context.region, context);
   const casClient = getCasClient(context);
-  const domainNames = _.uniq(
+  const domainNames = [...new Set(
     customDomains.map((customDomain) => customDomain.domainName)
-  );
+  )];
   let domainName = domainNames[0];
-  if (domainNames.length > 1) {
-    if (certName.startsWith(CERT_WILDCARD_PREFIX)) {
-      const wildcardPosition = Number(certName.split("-")[4]);
-      domainName = `*.${domainName
-        .split(".")
-        .slice(-1 * (wildcardPosition - 1))
-        .join(".")}`;
+  if (certName.startsWith(CERT_WILDCARD_PREFIX)) {
+    const wildcardPosition = Number(certName.split("-")[4]);
+    if (!Number.isInteger(wildcardPosition) || wildcardPosition < 3) {
+      throw new Error(`Invalid wildcard certificate name: ${certName}`);
     }
+    domainName = `*.${domainName
+      .split(".")
+      .slice(-1 * (wildcardPosition - 1))
+      .join(".")}`;
   }
   const result = await fcClient.invokeFunctionWithOptions(
     CERT_GENERATOR_FUNCTION_NAME,
@@ -130,8 +130,9 @@ async function updateCustomDomains(certName, customDomains, context) {
     new Util.RuntimeOptions({})
   );
   if (!result.headers["x-fc-error-type"]) {
-    const certId = await Util.default.readAsString(result.body);
-    if (certId) {
+    const response = await Util.default.readAsString(result.body);
+    const certId = response.trim().replace(/^"|"$/g, "");
+    if (/^[1-9]\d*$/.test(certId)) {
       const certInfo = await casClient.getUserCertificateDetailWithOptions(
         new cas20200407.GetUserCertificateDetailRequest({
           certId: certId,
@@ -183,7 +184,7 @@ exports.handler = async (event, context, callback) => {
   if (Object.keys(map).length === 0) {
     console.log("no fc-certbot app created certs found");
   }
-  Object.keys(map).forEach(async (certName) => {
+  Object.keys(map).forEach((certName) => {
     const customDomains = map[certName];
     console.log(
       `found cert ${certName} is used by custom domains: ${customDomains

@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
-import os
 import random
 import string
 
 from pathlib import Path
+from crypto_utils import load_rsa_private_key
 from alibabacloud_cas20200407.client import Client as cas20200407Client
-from alibabacloud_tea_openapi import models as open_api_models
 from alibabacloud_cas20200407 import models as cas_20200407_models
-from alibabacloud_tea_util import models as util_models
+from darabonba.runtime import RuntimeOptions
+from aliyun_config import get_config
 
 
 def get_cert_name(domainName, certName):
@@ -29,21 +29,22 @@ def get_cert_name(domainName, certName):
 
 
 def upload_cert(certPath, keyPath, domainName, certName, certId):
+    cert = Path(certPath).read_text()
+    key = load_rsa_private_key(keyPath)
     if certId is not None:
         delete_cert(certId)
         print("delete old certificate first.")
-    cert = Path(certPath).read_text()
-    key = Path(keyPath).read_text()
     upload_user_certificate_request = cas_20200407_models.UploadUserCertificateRequest(
         name=get_cert_name(domainName, certName), cert=cert, key=key
     )
-    newCert = client.upload_user_certificate_with_options(
+    newCert = get_client().upload_user_certificate_with_options(
         upload_user_certificate_request, runtime
     )
     return cert, key, newCert.body.cert_id
 
 
 def get_cert_by_name(certName):
+    client = get_client()
     current_page = 1
     show_size = 1000
     stop = False
@@ -54,7 +55,7 @@ def get_cert_by_name(certName):
             ),
             runtime,
         )
-        for cert in out.body.certificate_order_list:
+        for cert in out.body.certificate_order_list or []:
             if cert.name == certName:
                 certDetail = client.get_user_certificate_detail_with_options(
                     cas_20200407_models.GetUserCertificateDetailRequest(
@@ -71,7 +72,7 @@ def get_cert_by_name(certName):
 
 
 def delete_cert(cert_id):
-    client.delete_user_certificate_with_options(
+    get_client().delete_user_certificate_with_options(
         cas_20200407_models.DeleteUserCertificateRequest(cert_id=cert_id), runtime
     )
 
@@ -80,15 +81,7 @@ def get_cas_endpoint():
     return "cas.aliyuncs.com"
 
 
-runtime = util_models.RuntimeOptions()
+runtime = RuntimeOptions()
 
-client = cas20200407Client(
-    open_api_models.Config(
-        access_key_id=os.environ["ALIBABA_CLOUD_ACCESS_KEY_ID"],
-        access_key_secret=os.environ["ALIBABA_CLOUD_ACCESS_KEY_SECRET"],
-        security_token=os.environ["ALIBABA_CLOUD_SECURITY_TOKEN"],
-        endpoint=get_cas_endpoint(),
-        read_timeout=1000000,
-        connect_timeout=1000000,
-    )
-)
+def get_client():
+    return cas20200407Client(get_config(get_cas_endpoint()))

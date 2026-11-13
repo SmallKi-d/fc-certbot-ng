@@ -1,12 +1,14 @@
 # -*- coding: utf-8 -*-
-import logging
 import json
 import certbot.main
 import os
-import subprocess
 import datetime
+import shlex
+import sys
+from pathlib import Path
 from cas.index import upload_cert, get_cert_by_name
 from alidns.index import check_if_valid_domain
+from aliyun_config import configure_credentials
 
 
 def check_if_less_than_seven_days(x):
@@ -16,7 +18,8 @@ def check_if_less_than_seven_days(x):
 
 
 def handler(event, context):
-    evt = json.loads(event)
+    configure_credentials(context)
+    evt = event if isinstance(event, dict) else json.loads(event)
     domainName = evt.get("domainName")
     if domainName is not None:
         if domainName.startswith("https://") or domainName.startswith("http://"):
@@ -36,7 +39,21 @@ def handler(event, context):
                 return cert.id
     if domainName is None:
         raise Exception("no domainName provided")
+    email = os.environ.get("CERTBOT_EMAIL")
+    if not email:
+        raise ValueError("Set CERTBOT_EMAIL to your ACME account email")
     check_if_valid_domain()
+    project_dir = Path(__file__).resolve().parent
+    config_dir = Path(os.environ.get("CERTBOT_CONFIG_DIR", "/tmp/letsencrypt/config"))
+    hook_pythonpath = os.pathsep.join(
+        [str(project_dir / "python"), str(project_dir), os.environ.get("PYTHONPATH", "")]
+    )
+
+    def hook_command(script):
+        return shlex.join(
+            ["env", "PYTHONPATH=" + hook_pythonpath, sys.executable, str(project_dir / script)]
+        )
+
     certbot_args = [
         "certonly",
         "--manual",
@@ -44,9 +61,15 @@ def handler(event, context):
         "--non-interactive",
         "--agree-tos",
         "--manual-auth-hook",
-        "/code/scripts/authenticator.sh",
+        hook_command("authenticator.py"),
         "--manual-cleanup-hook",
-        "/code/scripts/cleanup.sh",
+        hook_command("cleanup.py"),
+        "--config-dir",
+        str(config_dir),
+        "--work-dir",
+        os.environ.get("CERTBOT_WORK_DIR", "/tmp/letsencrypt/work"),
+        "--logs-dir",
+        os.environ.get("CERTBOT_LOGS_DIR", "/tmp/letsencrypt/logs"),
         "--preferred-challenges",
         "dns",
         "--key-type",
@@ -54,24 +77,23 @@ def handler(event, context):
         "--cert-name",
         domainName,
         "--email",
-        "your_mail@mail.com",
+        email,
         "--server",
-        "https://acme-v02.api.letsencrypt.org/directory",
+        os.environ.get("CERTBOT_SERVER", "https://acme-v02.api.letsencrypt.org/directory"),
         "--domains",
         domainName,
     ]
-    certbot.main.main(certbot_args)
+    result = certbot.main.main(certbot_args)
+    if result not in (None, 0):
+        raise RuntimeError("Certbot failed: {}".format(result))
     print("cert generated")
-    exitCode = subprocess.call("/code/scripts/upload-certs.sh")
-    if exitCode == 0:
-        cert, key, cert_id = upload_cert(
-            "/etc/letsencrypt/live/" + domainName + "/fullchain.pem",
-            "/etc/letsencrypt/live/" + domainName + "/privkey.pkcs1.pem",
-            domainName,
-            certName,
-            certificate_id,
-        )
-        print("cert uploaded to cas successfully")
-        return cert_id
-    else:
-        raise Exception("failed to upload certs")
+    cert_dir = config_dir / "live" / domainName
+    cert, key, cert_id = upload_cert(
+        cert_dir / "fullchain.pem",
+        cert_dir / "privkey.pem",
+        domainName,
+        certName,
+        certificate_id,
+    )
+    print("cert uploaded to cas successfully")
+    return cert_id

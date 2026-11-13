@@ -1,0 +1,31 @@
+name: compatibility tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '26'
+          cache: npm
+          cache-dependency-path: src/fc-domain-manager/package-lock.json
+      - name: Build Python dependencies
+        working-directory: src/cert-generator
+        run: PYTHON_BIN=python3.12 bash scripts/build-deps.sh
+      - name: Test certificate generator
+        working-directory: src/cert-generator
+        run: PYTHONPATH=python python3.12 -m unittest discover -s tests -v
+      - name: Install domain manager dependencies
+        working-directory: src/fc-domain-manager
+        run: npm ci --omit=dev
+      - name: Test domain manager
+        working-directory: src/fc-domain-manager
+        run: npm test

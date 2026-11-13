@@ -4,14 +4,13 @@ vars:
   fcDomainManagerFunctionName: "{{ fcDomainManagerFunctionName }}"
   certGeneratorFunctionName: "{{ certGeneratorFunctionName }}"
   role: "{{ role }}"
+  certbotEmail: "{{ certbotEmail }}"
 resources:
   cert-generator-hz:
     component: fc3
     actions:
       pre-deploy:
-        - run: mkdir python
-          path: ./cert-generator
-        - run: export PATH=/usr/local/envs/py310/bin:$PATH && pip3 install -r requirements.txt -t ./python
+        - run: bash scripts/build-deps.sh
           path: ./cert-generator
     props:
       region: cn-hangzhou
@@ -23,9 +22,10 @@ resources:
       diskSize: 10240
       internetAccess: true
       functionName: ${vars.certGeneratorFunctionName}
-      runtime: python3.10
+      runtime: python3.12
       environmentVariables:
         PYTHONPATH: /opt/python:/code/python:/code
+        CERTBOT_EMAIL: ${vars.certbotEmail}
       code: ./cert-generator
       asyncInvokeConfig:
         asyncTask: true
@@ -33,6 +33,10 @@ resources:
         maxAsyncRetryAttempts: 3
   cert-generator-sg:
     component: fc3
+    actions:
+      pre-deploy:
+        - run: bash scripts/build-deps.sh
+          path: ./cert-generator
     props:
       region: ap-southeast-1
       handler: index.handler
@@ -43,9 +47,10 @@ resources:
       diskSize: 10240
       internetAccess: true
       functionName: ${vars.certGeneratorFunctionName}
-      runtime: python3.10
+      runtime: python3.12
       environmentVariables:
         PYTHONPATH: /opt/python:/code/python:/code
+        CERTBOT_EMAIL: ${vars.certbotEmail}
       code: ./cert-generator
       asyncInvokeConfig:
         asyncTask: true
@@ -55,7 +60,7 @@ resources:
     component: fc3
     actions:
       pre-deploy:
-        - run: export PATH=/usr/local/versions/node/v20.8.1/bin:$PATH && npm install
+        - run: npm ci --omit=dev
           path: ./fc-domain-manager
     props:
       region: cn-hangzhou
@@ -67,7 +72,7 @@ resources:
       diskSize: 10240
       internetAccess: true
       functionName: ${vars.fcDomainManagerFunctionName}
-      runtime: nodejs20
+      runtime: nodejs26
       environmentVariables:
         CUSTOM_DOMAIN_REGIONS: cn-beijing,cn-hangzhou,cn-shanghai,cn-qingdao,cn-zhangjiakou,cn-huhehaote,cn-shenzhen,cn-chengdu
         CERT_GENERATOR_FUNCTION_NAME: ${vars.certGeneratorFunctionName}
@@ -82,6 +87,10 @@ resources:
           triggerType: timer
   fc-domain-manager-sg:
     component: fc3
+    actions:
+      pre-deploy:
+        - run: npm ci --omit=dev
+          path: ./fc-domain-manager
     props:
       region: ap-southeast-1
       handler: index.handler
@@ -92,7 +101,7 @@ resources:
       diskSize: 10240
       internetAccess: true
       functionName: ${vars.fcDomainManagerFunctionName}
-      runtime: nodejs20
+      runtime: nodejs26
       environmentVariables:
         CUSTOM_DOMAIN_REGIONS: cn-hongkong,ap-southeast-1,ap-southeast-3,ap-southeast-5,ap-southeast-7,ap-northeast-1,ap-northeast-2,eu-central-1,eu-west-1,us-west-1,us-east-1
         CERT_GENERATOR_FUNCTION_NAME: ${vars.certGeneratorFunctionName}

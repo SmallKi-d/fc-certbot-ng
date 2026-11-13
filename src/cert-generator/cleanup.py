@@ -9,4 +9,4 @@ record_id = get_domain_record_id(domainName, rr)
 
 if record_id:
     delete_rr(record_id)
-    print("dns record delted.")
+    print("dns record deleted.")

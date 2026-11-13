@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+import os
+import time
 
 from alidns.index import (
     get_domain_record_id,
@@ -19,3 +21,6 @@ if record_id:
 else:
     insert_rr(domainName, rr)
     print("dns record added.")
+
+# Allow authoritative DNS updates to propagate before Certbot asks the CA to validate.
+time.sleep(float(os.environ.get("CERTBOT_DNS_PROPAGATION_SECONDS", "30")))

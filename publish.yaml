@@ -22,7 +22,13 @@ Parameters:
     - fcDomainManagerFunctionName
     - certGeneratorFunctionName
     - role
+    - certbotEmail
   properties:
+    certbotEmail:
+      title: ACME 账号邮箱
+      type: string
+      format: email
+      description: 用于 Let's Encrypt 账号注册和证书通知，请填写真实邮箱。
     fcDomainManagerFunctionName:
       title: Domain Manager 函数名
       type: string
